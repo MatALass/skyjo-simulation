@@ -1,0 +1,1 @@
+prudent:discard_min_gain=5:finish_margin=10:hidden_discount=1:hidden_max=none:pair_bonus=4:reveal_bonus=1

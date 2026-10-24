@@ -1,0 +1,1 @@
+stratege:deny_weight=0:hidden_max=4

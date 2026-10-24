@@ -1,0 +1,486 @@
+<title>Skyjo pas à pas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout : la table (pioche, défausse, grilles des joueurs) à gauche, le rail d'explications à droite ;
+   une barre de lecture collée en haut. Sur téléphone, tout s'empile. */
+:root {
+  --bg: #e7ece7;
+  --surface: #f6f8f4;
+  --surface-2: #dce4dc;
+  --ink: #17211e;
+  --muted: #56645e;
+  --line: #c4cec6;
+  --accent: #0d6c76;
+  --accent-soft: #0d6c7622;
+  --accent-ink: #ffffff;
+  --warn: #b0502a;
+  --good: #2b7a4b;
+  /* Cartes : objets physiques, mêmes couleurs dans les deux thèmes (bandes de valeur). */
+  --c-neg: #3a46a3;
+  --c-zero: #86c8e8;
+  --c-low: #84c77c;
+  --c-mid: #f1d35c;
+  --c-high: #df5f48;
+  --c-ink-dark: #14201c;
+  --c-ink-light: #ffffff;
+  --c-back: #23404a;
+  --c-back-2: #2d5562;
+  --c-edge: #0000002e;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111916; --surface: #18221f; --surface-2: #212e2a; --ink: #e4ebe7; --muted: #95a49e;
+    --line: #2c3a35; --accent: #4cc2c8; --accent-soft: #4cc2c826; --accent-ink: #0a1513;
+    --warn: #e88a5d; --good: #6ec390; --c-edge: #00000066; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111916; --surface: #18221f; --surface-2: #212e2a; --ink: #e4ebe7; --muted: #95a49e;
+  --line: #2c3a35; --accent: #4cc2c8; --accent-soft: #4cc2c826; --accent-ink: #0a1513;
+  --warn: #e88a5d; --good: #6ec390; --c-edge: #00000066; color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 32px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--bg);
+}
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- barre de lecture ---------- */
+.bar {
+  position: relative; z-index: 5; background: var(--bg);
+  display: grid; gap: 10px; padding-block: 14px 12px; border-bottom: 1px solid var(--line);
+}
+@media (min-width: 760px) { .bar { position: sticky; top: env(safe-area-inset-top, 0px); } }
+.bar-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.brand h1 { font: 800 1.45rem/1.1 var(--f-display); margin: 0; letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.where { font: 600 0.82rem/1 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 500; font-size: 0.9rem;
+}
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; border-color: var(--line); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn .k { font: 400 0.72rem/1 var(--f-mono); opacity: 0.7; }
+.seek { flex: 1 1 200px; min-width: 140px; accent-color: var(--accent); }
+.opt { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; color: var(--muted); }
+.opt select { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+
+/* ---------- mise en page ---------- */
+.layout { display: grid; gap: 20px; padding-top: 18px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1060px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); align-items: start; } }
+
+/* ---------- table ---------- */
+.table { display: grid; gap: 16px; min-width: 0; }
+.piles {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
+  background: var(--surface-2); border-radius: var(--radius); padding: 14px 16px;
+}
+.pile { display: grid; justify-items: center; gap: 6px; }
+.pile .cap { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.pile .sub { font: 400 0.78rem/1 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.played { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 220px; }
+.played p { margin: 0; font-size: 0.88rem; color: var(--muted); min-width: 0; }
+.played p strong { color: var(--ink); font-weight: 600; }
+.players { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .players { grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); } }
+.player {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px 14px; display: grid; gap: 10px; min-width: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.player.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.player header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.player h3 { margin: 0; font: 700 1.08rem/1.2 var(--f-display); }
+.seat { font: 600 0.72rem/1 var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 3px 5px; }
+.chip { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.chip.turn { background: var(--accent); color: var(--accent-ink); }
+.chip.warn { background: var(--warn); color: var(--c-ink-light); }
+.chip.good { background: var(--good); color: var(--c-ink-light); }
+.style { margin: -4px 0 0; font-size: 0.8rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 58px)); gap: 7px; justify-content: start; }
+.col { display: grid; gap: 7px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.stats div { display: grid; gap: 1px; }
+.stats dt { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.stats dd { margin: 0; font: 600 0.98rem/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- cartes ---------- */
+.card {
+  width: 100%; max-width: 58px; aspect-ratio: 5 / 7; border-radius: 7px; position: relative;
+  display: grid; place-items: center; font: 800 1.35rem/1 var(--f-display); font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1px var(--c-edge), 0 1px 2px var(--c-edge);
+  user-select: none;
+}
+.card.big { width: 58px; }
+.card::before { font: 600 0.55rem/1 var(--f-mono); position: absolute; opacity: 0.75; }
+.card[data-v]::before { content: attr(data-v); top: 5px; left: 5px; }
+.v-neg { background: var(--c-neg); color: var(--c-ink-light); }
+.v-zero { background: var(--c-zero); color: var(--c-ink-dark); }
+.v-low { background: var(--c-low); color: var(--c-ink-dark); }
+.v-mid { background: var(--c-mid); color: var(--c-ink-dark); }
+.v-high { background: var(--c-high); color: var(--c-ink-light); }
+.back {
+  background:
+    repeating-linear-gradient(45deg, var(--c-back-2) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(-45deg, var(--c-back-2) 0 4px, var(--c-back) 4px 9px);
+  color: transparent;
+}
+.back .peek { font: 700 0.9rem/1 var(--f-display); color: #ffffffcc; background: #00000059; border-radius: 4px; padding: 2px 4px; }
+.slot-empty { border: 1.5px dashed var(--line); background: transparent; box-shadow: none; }
+.removed-tag { font: 600 0.62rem/1.2 var(--f-mono); color: var(--muted); text-align: center; writing-mode: vertical-rl; transform: rotate(180deg); }
+.mark-new { outline: 3px solid var(--accent); outline-offset: 2px; }
+.mark-revealed { outline: 3px dashed var(--accent); outline-offset: 2px; }
+.mark-final { outline: 2px dotted var(--muted); outline-offset: 2px; }
+.mark-removed { border-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .flip { animation: flip 0.35s ease-out; }
+  @keyframes flip { from { transform: rotateY(90deg); } to { transform: rotateY(0); } }
+}
+
+/* ---------- rail ---------- */
+.rail { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 1060px) { .rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 128px); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.panel h2 { margin: 0 0 8px; font: 600 0.74rem/1.2 var(--f-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.move-title { margin: 0 0 10px; font: 700 1.12rem/1.3 var(--f-display); text-wrap: balance; }
+.why { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; font-size: 0.9rem; }
+.why li { min-width: 0; overflow-wrap: anywhere; }
+.why li.sub { padding-left: 14px; color: var(--muted); font-size: 0.86rem; }
+.why li.sub::before { content: "·"; margin-left: -10px; margin-right: 6px; color: var(--accent); font-weight: 700; }
+.opts { display: grid; gap: 6px; margin-top: 12px; }
+.opts h3 { margin: 0; font: 600 0.74rem/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.optrow { display: grid; grid-template-columns: minmax(0, 1fr) 96px 46px; gap: 8px; align-items: center; font-size: 0.82rem; }
+.optrow .lab { min-width: 0; overflow-wrap: anywhere; }
+.optrow.chosen .lab { font-weight: 600; }
+.optrow .val { font: 600 0.8rem/1 var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.track { position: relative; height: 10px; background: var(--surface-2); border-radius: 3px; }
+.track .zero { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.track .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--muted); opacity: 0.55; }
+.optrow.chosen .fill { background: var(--accent); opacity: 1; }
+.kv { display: flex; justify-content: space-between; gap: 12px; font-size: 0.88rem; }
+.kv b { font: 600 0.95rem/1.3 var(--f-mono); font-variant-numeric: tabular-nums; }
+.hist { margin-top: 10px; display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 3px; align-items: end; height: 92px; }
+.hist .b { display: grid; grid-template-rows: 1fr auto; gap: 3px; height: 100%; }
+.hist .bar-v { align-self: end; border-radius: 2px 2px 0 0; min-height: 1px; }
+.hist .lab { font: 400 0.62rem/1 var(--f-mono); color: var(--muted); text-align: center; }
+.hist-note { margin: 6px 0 0; font-size: 0.78rem; color: var(--muted); }
+.scores { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.scores th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 4px; }
+.scores td { padding: 4px 0; vertical-align: middle; }
+.scores td.n { font: 600 0.88rem/1 var(--f-mono); text-align: right; width: 44px; font-variant-numeric: tabular-nums; }
+.scores .sbar { position: relative; height: 8px; background: var(--surface-2); border-radius: 3px; margin: 0 10px; }
+.scores .sbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); }
+.scores .sbar u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--warn); }
+.journal { max-height: 360px; overflow: auto; margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.journal .rh { font: 600 0.72rem/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; padding: 8px 4px 2px; }
+.journal button {
+  width: 100%; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 5px 6px;
+  font-size: 0.82rem; color: var(--muted); cursor: pointer; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px;
+}
+.journal button:hover { background: var(--surface-2); color: var(--ink); }
+.journal button.cur { background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+.journal .t { font: 400 0.72rem/1.5 var(--f-mono); color: var(--muted); }
+.empty { padding: 40px 0; color: var(--muted); }
+.help { font-size: 0.78rem; color: var(--muted); margin: 0; }
+</style>
+
+<header class="bar" id="bar">
+  <div class="bar-top">
+    <div class="brand">
+      <h1>Skyjo pas à pas</h1>
+      <p id="meta">Partie simulée</p>
+    </div>
+    <span class="where" id="where">—</span>
+  </div>
+  <div class="controls">
+    <button class="btn" id="b-first" type="button" title="Début de la partie">⏮ Début</button>
+    <button class="btn" id="b-prevround" type="button" title="Début de la manche précédente">« Manche</button>
+    <button class="btn" id="b-prev" type="button" title="Étape précédente (flèche gauche)">◀ <span class="k">←</span></button>
+    <button class="btn primary" id="b-next" type="button" title="Étape suivante (flèche droite)"><span id="b-next-label">Tour suivant ▶</span> <span class="k">→</span></button>
+    <button class="btn" id="b-nextround" type="button" title="Début de la manche suivante">Manche »</button>
+    <button class="btn" id="b-play" type="button" title="Lecture automatique (espace)">Lecture</button>
+    <label class="opt" for="speed">Vitesse
+      <select id="speed">
+        <option value="2400">lente</option>
+        <option value="1300" selected>normale</option>
+        <option value="600">rapide</option>
+        <option value="250">très rapide</option>
+      </select>
+    </label>
+    <input class="seek" id="seek" type="range" min="0" max="0" value="0" aria-label="Position dans la partie">
+    <label class="opt" for="peek"><input id="peek" type="checkbox"> Voir les cartes cachées</label>
+  </div>
+</header>
+
+<main class="layout" id="app">
+  <section class="table" aria-label="Table de jeu">
+    <div class="piles" id="piles"></div>
+    <div class="players" id="players"></div>
+  </section>
+  <aside class="rail">
+    <section class="panel" aria-live="polite">
+      <h2 id="move-kind">Ce coup</h2>
+      <p class="move-title" id="move-title"></p>
+      <ul class="why" id="why"></ul>
+      <div class="opts" id="opts" hidden></div>
+    </section>
+    <section class="panel">
+      <h2>Ce que la table sait</h2>
+      <div class="kv"><span>Espérance d'une carte inconnue</span><b id="exp">—</b></div>
+      <div class="hist" id="hist" aria-label="Cartes encore inconnues par valeur"></div>
+      <p class="hist-note" id="hist-note"></p>
+    </section>
+    <section class="panel">
+      <h2>Scores de la partie</h2>
+      <table class="scores" id="scores"></table>
+    </section>
+    <section class="panel">
+      <h2>Journal</h2>
+      <ol class="journal" id="journal"></ol>
+      <p class="help">Cliquez sur une ligne pour y revenir. Flèches ← → pour avancer, espace pour la lecture automatique.</p>
+    </section>
+  </aside>
+</main>
+
+<script>
+const REPLAY = /*__REPLAY_DATA__*/null;
+
+(function () {
+  const $ = (id) => document.getElementById(id);
+  if (!REPLAY || !REPLAY.steps || !REPLAY.steps.length) {
+    $("app").innerHTML = '<p class="empty">Aucune partie chargée. Générez-en une avec <code>skyjo replay</code>.</p>';
+    return;
+  }
+  const steps = REPLAY.steps;
+  const players = REPLAY.meta.players;
+  const n = players.length;
+  const KIND = { deal: "Distribution", initial: "Retournement initial", start: "Premier joueur",
+                 turn: "Tour", round_end: "Fin de manche", game_end: "Fin de partie" };
+  let idx = 0, timer = null, peek = false, lastRendered = -1;
+
+  const band = (v) => v < 0 ? "v-neg" : v === 0 ? "v-zero" : v <= 4 ? "v-low" : v <= 8 ? "v-mid" : "v-high";
+  const fmt = (x) => {
+    const r = Math.round(x * 10) / 10;
+    const s = Number.isInteger(r) ? String(Math.abs(r)) : Math.abs(r).toFixed(1).replace(".", ",");
+    return (r < 0 ? "−" : "") + s;
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const cardHTML = (v, cls = "", extra = "") =>
+    `<div class="card ${band(v)} ${cls}" data-v="${v}" ${extra}>${v}</div>`;
+  const backHTML = (v, cls = "") =>
+    `<div class="card back ${cls}" aria-label="carte cachée">${peek && v !== null ? `<span class="peek">${v}</span>` : ""}</div>`;
+
+  $("meta").textContent = `${n} joueurs · ${players.map((p) => p.label).join(", ")} · graine ${REPLAY.meta.seed ?? "aléatoire"}`;
+  $("seek").max = String(steps.length - 1);
+  $("players").style.setProperty("--cols", String(n <= 3 ? n : n === 4 ? 2 : 3));
+
+  function marksFor(step, p) {
+    const m = {};
+    const hl = step.hl || {};
+    if (hl.player === p && hl.cells) for (const [c, r, k] of hl.cells) m[c + "," + r] = k;
+    if (hl.finalCells) for (const [pi, cells] of hl.finalCells) if (pi === p) for (const [c, r, k] of cells) m[c + "," + r] = k;
+    return m;
+  }
+
+  function renderPlayers(step, animate) {
+    const s = step.state, hl = step.hl || {};
+    const html = players.map((pl, p) => {
+      const board = s.boards[p];
+      const marks = marksFor(step, p);
+      const removedNow = hl.player === p ? (hl.removedCols || []) : [];
+      const cols = board.map((col, c) => {
+        if (col === null) {
+          const tag = removedNow.includes(c) ? "retirée" : "";
+          return `<div class="col">${[0, 1, 2].map((r) =>
+            `<div class="card slot-empty ${removedNow.includes(c) ? "mark-removed" : ""}">${r === 1 && tag ? `<span class="removed-tag">${tag}</span>` : ""}</div>`).join("")}</div>`;
+        }
+        return `<div class="col">${col.map(([v, vis], r) => {
+          const k = marks[c + "," + r];
+          const cls = k ? `mark-${k}` + (animate && k !== "final" ? " flip" : "") : "";
+          return vis ? cardHTML(v, cls, `aria-label="${v}"`) : backHTML(v, cls);
+        }).join("")}</div>`;
+      }).join("");
+      const chips = [];
+      const active = step.player === p && (step.kind === "turn" || step.kind === "initial" || step.kind === "start");
+      if (active) chips.push(`<span class="chip turn">${step.kind === "start" ? "commence" : "joue"}</span>`);
+      if (step.kind === "round_end") {
+        const sc = hl.roundScores[p], raw = hl.rawScores[p];
+        if (hl.finisher === p) chips.push(`<span class="chip ${hl.doubled ? "warn" : "good"}">${hl.doubled ? "a fini · doublé" : "a fini"}</span>`);
+        chips.push(`<span class="chip">manche : ${sc}${sc !== raw ? ` (${raw}×2)` : ""}</span>`);
+      }
+      if (step.kind === "game_end" && hl.winners.includes(p)) chips.push(`<span class="chip good">vainqueur</span>`);
+      return `<article class="player ${active ? "active" : ""}">
+        <header><span class="seat">J${p + 1}</span><h3>${esc(pl.label)}</h3>${chips.join("")}</header>
+        <p class="style" title="${esc(pl.description)}">${esc(pl.description)}</p>
+        <div class="grid">${cols}</div>
+        <dl class="stats">
+          <div><dt>Visible</dt><dd>${s.visible[p]}</dd></div>
+          <div><dt>Estimé</dt><dd>${fmt(s.estimates[p])}</dd></div>
+          <div><dt>Cachées</dt><dd>${s.hidden[p]}</dd></div>
+          <div><dt>Partie</dt><dd>${s.totals[p]}</dd></div>
+        </dl>
+      </article>`;
+    }).join("");
+    $("players").innerHTML = html;
+  }
+
+  function renderPiles(step) {
+    const s = step.state, hl = step.hl || {};
+    let played = `<p>${step.kind === "turn" ? "" : "Aucune carte jouée à cette étape."}</p>`;
+    if (step.kind === "turn" && hl.card !== undefined) {
+      const who = players[step.player].label;
+      const src = hl.source === "discard" ? "prise dans la défausse" : "piochée";
+      let what;
+      if (hl.action === "reveal") what = `aussitôt défaussée ; il retourne une carte : <strong>${hl.old}</strong>`;
+      else if (hl.action === "replace_hidden") what = `posée sur une carte cachée ; la carte remplacée (<strong>${hl.old}</strong>) part à la défausse`;
+      else what = `posée à la place du <strong>${hl.old}</strong>, qui part à la défausse`;
+      played = `${cardHTML(hl.card, "big")}<p><strong>${esc(who)}</strong> · carte ${src}, ${what}.</p>`;
+    }
+    $("piles").innerHTML = `
+      <div class="pile"><span class="cap">Pioche</span><div class="card back big"></div><span class="sub">${s.draw} cartes</span></div>
+      <div class="pile"><span class="cap">Défausse</span>${s.discard === null ? '<div class="card slot-empty big"></div>' : cardHTML(s.discard, "big")}<span class="sub">${s.discardCount} cartes</span></div>
+      <div class="played">${played}</div>`;
+  }
+
+  function renderMove(step) {
+    const label = step.kind === "turn" ? `Manche ${step.round} · tour ${step.turn + 1}` : `${KIND[step.kind]} · manche ${step.round}`;
+    $("move-kind").textContent = label;
+    $("move-title").textContent = step.title;
+    $("why").innerHTML = step.details.map((d) => d.startsWith("• ")
+      ? `<li class="sub">${esc(d.slice(2))}</li>` : `<li>${esc(d)}</li>`).join("");
+    const opts = step.options || [];
+    const box = $("opts");
+    if (!opts.length) { box.hidden = true; box.innerHTML = ""; return; }
+    const lo = Math.min(0, ...opts.map((o) => o.value)), hi = Math.max(0, ...opts.map((o) => o.value));
+    const span = hi - lo || 1, zero = ((0 - lo) / span) * 100;
+    box.hidden = false;
+    box.innerHTML = `<h3>Options comparées (valeur pour le joueur)</h3>` + opts.map((o) => {
+      const a = ((Math.min(o.value, 0) - lo) / span) * 100, b = ((Math.max(o.value, 0) - lo) / span) * 100;
+      const count = o.count > 1 ? ` <span class="t">×${o.count}</span>` : "";
+      return `<div class="optrow ${o.chosen ? "chosen" : ""}">
+        <span class="lab">${o.chosen ? "▸ " : ""}${esc(o.label)}${count}</span>
+        <span class="track"><span class="zero" style="left:${zero}%"></span><span class="fill" style="left:${a}%;width:${Math.max(b - a, 1)}%"></span></span>
+        <span class="val">${fmt(o.value)}</span></div>`;
+    }).join("");
+  }
+
+  function renderInfo(step) {
+    const s = step.state;
+    $("exp").textContent = s.expected.toFixed(2).replace(".", ",");
+    const vals = Array.from({ length: 15 }, (_, i) => i - 2);
+    const counts = vals.map((v) => s.unknown[String(v)] || 0);
+    const total = counts.reduce((a, b) => a + b, 0);
+    $("hist").innerHTML = vals.map((v, i) => {
+      const max = v === 0 ? 15 : v < 0 ? (v === -2 ? 5 : 10) : 10;
+      const h = (counts[i] / 15) * 100;
+      return `<div class="b" title="${counts[i]} carte(s) ${v} encore inconnue(s) sur ${max}">
+        <span class="bar-v ${band(v)}" style="height:${h}%"></span><span class="lab">${v}</span></div>`;
+    }).join("");
+    $("hist-note").textContent = `${total} cartes inconnues (pioche + cartes cachées). Les autres sont visibles sur la table ou dans la défausse.`;
+    const scale = Math.max(100, ...s.totals) * 1.05;
+    $("scores").innerHTML = `<tr><th>Joueur</th><th></th><th style="text-align:right">Total</th></tr>` +
+      players.map((pl, p) => `<tr><td>${esc(pl.label)}</td>
+        <td><div class="sbar"><i style="width:${(s.totals[p] / scale) * 100}%"></i><u style="left:${(100 / scale) * 100}%" title="100 points : fin de partie"></u></div></td>
+        <td class="n">${s.totals[p]}</td></tr>`).join("");
+  }
+
+  function renderJournal() {
+    const items = [];
+    let round = 0;
+    for (let i = 0; i <= idx; i++) {
+      const st = steps[i];
+      if (st.round !== round) { round = st.round; items.push(`<li class="rh">Manche ${round}</li>`); }
+      const t = st.kind === "turn" ? `T${st.turn + 1}` : st.kind === "initial" ? "init" : st.kind === "deal" ? "donne" : st.kind === "start" ? "1er" : "fin";
+      items.push(`<li><button type="button" data-i="${i}" class="${i === idx ? "cur" : ""}"><span class="t">${t}</span><span>${esc(st.title)}</span></button></li>`);
+    }
+    const j = $("journal");
+    j.innerHTML = items.join("");
+    const cur = j.querySelector("button.cur");
+    if (cur) j.scrollTop = Math.max(0, cur.offsetTop - j.clientHeight + cur.offsetHeight + 8);
+  }
+
+  function render() {
+    const step = steps[idx];
+    const animate = lastRendered === idx - 1;
+    lastRendered = idx;
+    renderPiles(step);
+    renderPlayers(step, animate);
+    renderMove(step);
+    renderInfo(step);
+    renderJournal();
+    $("seek").value = String(idx);
+    $("where").textContent = `étape ${idx + 1} / ${steps.length} · manche ${step.round} / ${REPLAY.meta.rounds}`;
+    $("b-prev").disabled = $("b-first").disabled = idx === 0;
+    $("b-next").disabled = idx === steps.length - 1;
+    $("b-prevround").disabled = idx === 0;
+    $("b-nextround").disabled = !steps.slice(idx + 1).some((s) => s.kind === "deal" || s.kind === "game_end");
+    $("b-next-label").textContent = step.kind === "game_end" ? "Partie terminée" : "Tour suivant ▶";
+    if (idx === steps.length - 1) stop();
+  }
+
+  const go = (i) => { idx = Math.max(0, Math.min(steps.length - 1, i)); render(); };
+  function nextRound() {
+    for (let i = idx + 1; i < steps.length; i++) if (steps[i].kind === "deal" || steps[i].kind === "game_end") return go(i);
+  }
+  function prevRound() {
+    const cur = steps[idx].round;
+    const target = steps[idx].kind === "deal" ? cur - 1 : cur;
+    const i = steps.findIndex((s) => s.round === target && s.kind === "deal");
+    go(i < 0 ? 0 : i);
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } $("b-play").textContent = "Lecture"; }
+  function play() {
+    if (timer) return stop();
+    if (idx === steps.length - 1) go(0);
+    $("b-play").textContent = "Pause";
+    timer = setInterval(() => go(idx + 1), Number($("speed").value));
+  }
+
+  $("b-first").onclick = () => { stop(); go(0); };
+  $("b-prev").onclick = () => { stop(); go(idx - 1); };
+  $("b-next").onclick = () => { stop(); go(idx + 1); };
+  $("b-nextround").onclick = () => { stop(); nextRound(); };
+  $("b-prevround").onclick = () => { stop(); prevRound(); };
+  $("b-play").onclick = play;
+  $("speed").onchange = () => { if (timer) { stop(); play(); } };
+  $("seek").oninput = (e) => { stop(); go(Number(e.target.value)); };
+  $("peek").onchange = (e) => { peek = e.target.checked; lastRendered = -1; render(); };
+  $("journal").onclick = (e) => { const b = e.target.closest("button[data-i]"); if (b) { stop(); go(Number(b.dataset.i)); } };
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("select, input[type=range]")) return;
+    if (e.key === "ArrowRight") { e.preventDefault(); stop(); go(idx + 1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); stop(); go(idx - 1); }
+    else if (e.key === " " && !e.target.closest("button")) { e.preventDefault(); play(); }
+  });
+
+  function start(saved) {
+    if (saved && Number.isInteger(saved.idx)) idx = Math.min(saved.idx, steps.length - 1);
+    if (saved && saved.peek) { peek = true; $("peek").checked = true; }
+    render();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ idx, peek }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
