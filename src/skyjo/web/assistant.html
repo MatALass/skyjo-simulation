@@ -1,0 +1,628 @@
+<title>Assistant Skyjo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout : pensé pour un téléphone tenu à table. Une colonne : conseil, défausse/pioche, ma grille, adversaires.
+   Sur grand écran, les adversaires passent dans une colonne de droite. */
+:root {
+  --bg: #e7ece7; --surface: #f6f8f4; --surface-2: #dce4dc; --ink: #17211e; --muted: #56645e; --line: #c4cec6;
+  --accent: #0d6c76; --accent-soft: #0d6c761f; --accent-ink: #ffffff; --warn: #a8481f; --good: #2b7a4b;
+  --overlay: #0b141299;
+  --c-neg: #3a46a3; --c-zero: #86c8e8; --c-low: #84c77c; --c-mid: #f1d35c; --c-high: #df5f48;
+  --c-ink-dark: #14201c; --c-ink-light: #ffffff; --c-back: #23404a; --c-back-2: #2d5562; --c-edge: #0000002e;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111916; --surface: #18221f; --surface-2: #212e2a; --ink: #e4ebe7; --muted: #95a49e; --line: #2c3a35;
+    --accent: #4cc2c8; --accent-soft: #4cc2c824; --accent-ink: #0a1513; --warn: #e88a5d; --good: #6ec390;
+    --overlay: #000000aa; --c-edge: #00000066; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111916; --surface: #18221f; --surface-2: #212e2a; --ink: #e4ebe7; --muted: #95a49e; --line: #2c3a35;
+  --accent: #4cc2c8; --accent-soft: #4cc2c824; --accent-ink: #0a1513; --warn: #e88a5d; --good: #6ec390;
+  --overlay: #000000aa; --c-edge: #00000066; color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; font-family: var(--f-display); text-wrap: balance; }
+p { margin: 0; }
+.app { max-width: 1100px; margin: 0 auto; }
+
+/* ---------- en-tête ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-block: 14px 10px; }
+.top h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; }
+.top .sub { font-size: 0.82rem; color: var(--muted); }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 8px 12px; cursor: pointer; font-weight: 500; font-size: 0.9rem; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; border-color: var(--line); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.ghost { background: transparent; font-size: 0.82rem; padding: 6px 10px; }
+.btn.big { padding: 12px 16px; font-size: 1rem; }
+.totals { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.8rem; color: var(--muted); }
+.totals span { background: var(--surface-2); border-radius: 999px; padding: 2px 9px; }
+.totals b { font-family: var(--f-mono); color: var(--ink); }
+
+/* ---------- mise en page ---------- */
+.layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } }
+.col { display: grid; gap: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.panel h2 { font-size: 0.74rem; font-family: var(--f-body); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.banner { border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; background: var(--accent-soft); border: 1px solid var(--accent); }
+.banner.warn { background: transparent; border-color: var(--warn); color: var(--warn); }
+
+/* ---------- conseil ---------- */
+.advice { border: 2px solid var(--accent); }
+.advice .headline { font: 800 1.25rem/1.25 var(--f-display); }
+.advice .sub { color: var(--muted); font-size: 0.88rem; }
+.why { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 0.9rem; }
+.why li.sub { padding-left: 14px; color: var(--muted); font-size: 0.86rem; }
+.why li.sub::before { content: "·"; margin-left: -10px; margin-right: 6px; color: var(--accent); font-weight: 700; }
+details.more summary { cursor: pointer; font-size: 0.86rem; color: var(--accent); font-weight: 500; }
+details.more[open] summary { margin-bottom: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts { display: grid; gap: 5px; margin-top: 4px; }
+.optrow { display: grid; grid-template-columns: minmax(0, 1fr) 80px 42px; gap: 8px; align-items: center; font-size: 0.82rem; }
+.optrow .lab { min-width: 0; overflow-wrap: anywhere; }
+.optrow.chosen .lab { font-weight: 600; }
+.optrow .val { font: 600 0.8rem/1 var(--f-mono); text-align: right; }
+.track { position: relative; height: 9px; background: var(--surface-2); border-radius: 3px; }
+.track .zero { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.track .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--muted); opacity: 0.55; }
+.optrow.chosen .fill { background: var(--accent); opacity: 1; }
+
+/* ---------- cartes ---------- */
+.card {
+  border: 0; padding: 0; cursor: pointer; aspect-ratio: 5 / 7; border-radius: 8px; display: grid; place-items: center;
+  font: 800 1.4rem/1 var(--f-display); font-variant-numeric: tabular-nums; width: 100%;
+  box-shadow: inset 0 0 0 1px var(--c-edge), 0 1px 2px var(--c-edge); position: relative;
+}
+.card.sm { font-size: 0.95rem; border-radius: 5px; }
+.v-neg { background: var(--c-neg); color: var(--c-ink-light); }
+.v-zero { background: var(--c-zero); color: var(--c-ink-dark); }
+.v-low { background: var(--c-low); color: var(--c-ink-dark); }
+.v-mid { background: var(--c-mid); color: var(--c-ink-dark); }
+.v-high { background: var(--c-high); color: var(--c-ink-light); }
+.back { background: repeating-linear-gradient(45deg, var(--c-back-2) 0 4px, transparent 4px 9px), repeating-linear-gradient(-45deg, var(--c-back-2) 0 4px, var(--c-back) 4px 9px); }
+.empty { background: transparent; box-shadow: none; border: 1.5px dashed var(--line); cursor: default; }
+.target { outline: 3px solid var(--accent); outline-offset: 2px; }
+.target::after { content: attr(data-tag); position: absolute; top: -10px; right: -8px; background: var(--accent); color: var(--accent-ink); font: 600 0.62rem/1 var(--f-body); padding: 3px 5px; border-radius: 999px; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.grid.me { max-width: 320px; }
+.grid.opp { max-width: 190px; gap: 5px; }
+.gcol { display: grid; gap: 8px; }
+.grid.opp .gcol { gap: 5px; }
+
+/* ---------- table : défausse / pioche ---------- */
+.piles { display: grid; grid-template-columns: repeat(2, minmax(0, 92px)) minmax(0, 1fr); gap: 12px; align-items: center; }
+.pile { display: grid; gap: 4px; justify-items: center; }
+.pile .cap { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.pile .card { width: 64px; }
+.hint { font-size: 0.82rem; color: var(--muted); }
+
+/* ---------- adversaires ---------- */
+.opps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.opp { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.opp header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.opp h3 { font-size: 1rem; }
+.stats { display: flex; gap: 12px; font-size: 0.76rem; color: var(--muted); flex-wrap: wrap; }
+.stats b { font-family: var(--f-mono); color: var(--ink); }
+.chip { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.chip.on { background: var(--warn); color: var(--c-ink-light); }
+
+/* ---------- réglages ---------- */
+.setup { max-width: 560px; margin: 24px auto 0; }
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 600; font-size: 0.9rem; }
+.stepper { display: flex; align-items: center; gap: 10px; }
+.stepper output { font: 800 1.6rem/1 var(--f-display); min-width: 2ch; text-align: center; }
+.names { display: grid; gap: 6px; }
+.names input, select { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 10px; width: 100%; }
+
+/* ---------- feuille de choix ---------- */
+.sheet-bg { position: fixed; inset: 0; background: var(--overlay); z-index: 30; display: grid; align-items: end; justify-items: center; }
+.sheet {
+  background: var(--surface); width: min(560px, 100%); border-radius: 16px 16px 0 0; padding: 16px max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 12px; max-height: 85vh; overflow: auto;
+}
+@media (min-width: 700px) { .sheet-bg { align-items: center; } .sheet { border-radius: 16px; } }
+.sheet h3 { font-size: 1.1rem; }
+.keys { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.keys .card { font-size: 1.25rem; }
+.extra { display: flex; flex-wrap: wrap; gap: 8px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 40; background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 0.88rem; max-width: 90vw; }
+table.score { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+table.score td, table.score th { padding: 7px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+table.score td.n { font-family: var(--f-mono); text-align: right; }
+</style>
+
+<div class="app" id="app"></div>
+<div id="sheet-root"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+const PROFILES = /*__PROFILES__*/null;
+
+(function () {
+  "use strict";
+  const E = window.SkyjoEngine;
+  const $app = document.getElementById("app");
+  const STORE = "skyjo-assistant-v1";
+  const LABELS = { expert: "Expert", stratege: "Stratège", prudent: "Prudent", collectionneur: "Collectionneur", opportuniste: "Opportuniste", fonceur: "Fonceur", greedy: "Glouton" };
+
+  // ------------------------------------------------------------------ état
+  const blankGrid = () => Array.from({ length: 4 }, () => [null, null, null]);
+  let S = load() || { phase: "setup", nOpp: 3, names: [], profile: "expert" };
+  let undo = [];
+
+  function load() { try { const s = JSON.parse(localStorage.getItem(STORE)); return s && s.phase ? s : null; } catch { return null; } }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { /* stockage indisponible */ } }
+  function commit(mutator, msg) {
+    undo.push(JSON.stringify(S)); if (undo.length > 40) undo.shift();
+    mutator(S);
+    autoColumns();
+    detectFinisher();
+    save(); render();
+    if (msg) toast(msg);
+  }
+
+  // ------------------------------------------------------------------ outils
+  const band = (v) => v < 0 ? "v-neg" : v === 0 ? "v-zero" : v <= 4 ? "v-low" : v <= 8 ? "v-mid" : "v-high";
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const num = (x, d = 1) => {
+    const r = Math.round(x * 10 ** d) / 10 ** d;
+    const t = Number.isInteger(r) ? String(Math.abs(r)) : Math.abs(r).toFixed(d).replace(".", ",");
+    return (r < 0 ? "−" : "") + t;
+  };
+  const signed = (x) => (x >= 0 ? "+" : "−") + num(Math.abs(x));
+  const cell = ([c, r]) => `col. ${c + 1}, ligne ${r + 1}`;
+  const name = (i) => S.names[i];
+  const hiddenCount = (g) => E.hiddenCount(g);
+  const visibleScore = (g) => E.visibleScore(g);
+  let toastTimer = null;
+  function toast(msg) {
+    const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+  }
+
+  // Colonne de 3 cartes visibles identiques : retirée, la valeur passe sur la défausse.
+  function autoColumns() {
+    if (S.phase !== "play") return;
+    S.boards.forEach((g, i) => g.forEach((col, c) => {
+      if (col && col.every((v) => v !== null) && col[0] === col[1] && col[1] === col[2]) {
+        g[c] = null; S.discard = col[0];
+        setTimeout(() => toast(`${name(i)} : colonne de trois ${col[0]} retirée`), 0);
+      }
+    }));
+  }
+  function detectFinisher() {
+    if (S.phase !== "play" || S.finisher !== null) return;
+    const i = S.boards.findIndex((g) => E.positions(g).length > 0 && hiddenCount(g) === 0 && S.started);
+    if (i >= 0) S.finisher = i;
+  }
+
+  // ------------------------------------------------------------------ feuille de choix
+  function pick({ title, sub = "", allowHidden = false, allowRemove = false, allowNone = false }) {
+    return new Promise((resolve) => {
+      const root = document.getElementById("sheet-root");
+      const keys = E.VALUES.map((v) => `<button class="card ${band(v)}" data-v="${v}" type="button">${v}</button>`).join("");
+      const extra = [allowHidden && '<button class="btn" data-x="hidden" type="button">Carte cachée</button>',
+        allowRemove && '<button class="btn" data-x="remove" type="button">Colonne retirée</button>',
+        allowNone && '<button class="btn" data-x="none" type="button">Aucune</button>',
+        '<button class="btn ghost" data-x="cancel" type="button">Annuler</button>'].filter(Boolean).join("");
+      root.innerHTML = `<div class="sheet-bg" data-x="cancel"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <h3>${esc(title)}</h3>${sub ? `<p class="hint">${esc(sub)}</p>` : ""}<div class="keys">${keys}</div><div class="extra">${extra}</div></div></div>`;
+      const done = (v) => { root.innerHTML = ""; resolve(v); };
+      root.querySelector(".sheet-bg").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-v],[data-x]");
+        if (!b) return;
+        if (b.classList.contains("sheet-bg") && e.target !== b) return;
+        if (b.dataset.v !== undefined) done(Number(b.dataset.v));
+        else done(b.dataset.x === "cancel" ? null : b.dataset.x);
+      });
+      root.querySelector(".keys button").focus();
+    });
+  }
+
+  // ------------------------------------------------------------------ conseil (moteur)
+  function heuristic() { return new E.Heuristic(PROFILES[S.profile] || PROFILES.expert); }
+  function computeAdvice() {
+    const me = S.boards[0], opps = S.boards.slice(1);
+    const vis = E.positions(me).filter(([c, r]) => me[c][r] !== null).length;
+    if (!S.started) return { kind: "initial", vis };
+    if (hiddenCount(me) === 0) return { kind: "done" };
+    const H = heuristic();
+    try {
+      if (S.drawn !== null) {
+        const view = E.buildView({ me, opponents: opps, discard: S.discard, inHand: S.drawn });
+        return { kind: "drawn", exp: H.drawn(view, S.drawn) };
+      }
+      if (S.discard === null) return { kind: "need-discard" };
+      const view = E.buildView({ me, opponents: opps, discard: S.discard });
+      const exp = H.discardChoice(view);
+      let place = null;
+      if (exp.take) place = H.placeDiscard(E.buildView({ me, opponents: opps, discard: null, inHand: S.discard }), S.discard);
+      return { kind: "start", exp, place };
+    } catch (err) {
+      return { kind: "error", msg: err.message };
+    }
+  }
+
+  // ------------------------------------------------------------------ textes (comme skyjo/replay.py)
+  function targetText(p) { return p.hidden ? `une carte cachée (${cell(p.pos)})` : `le ${p.current} (${cell(p.pos)})`; }
+  function finishText(d, value) {
+    if (d.policy === "always") return "ce coup termine votre grille (ce profil ne regarde pas les adversaires)";
+    if (d.policy === "probabilistic")
+      return `ce coup termine votre grille : ~${num(d.my_final)} contre ~${num(d.opp_best)}, ${num(100 * d.p_lowest, 0)} % de chances d'être strictement le plus bas (${signed(value)})`;
+    if (value < 0) return `ce coup terminerait votre grille avec ~${num(d.my_final)} contre ~${num(d.opp_best)} pour le meilleur adversaire ; il faut ${num(d.margin)} points d'avance, sinon risque de doublement (${signed(value)})`;
+    return `ce coup termine votre grille avec une avance suffisante (~${num(d.my_final)} contre ~${num(d.opp_best)})`;
+  }
+  function breakdown(p, card) {
+    const out = [];
+    if (p.kind === "place") {
+      if (p.completes) out.push(`colonne de trois ${card} complétée : elle disparaît (${signed(p.gain)})`);
+      else if (p.hidden) out.push(`carte cachée estimée à ${num(p.cur_value)} remplacée par un ${card} (${signed(p.gain)})`);
+      else out.push(`${p.current} remplacé par un ${card} (${signed(p.gain)})`);
+    }
+    if ("pair" in p) out.push(`forme une paire dans la colonne (${signed(p.pair)})`);
+    if ("break_pair" in p) out.push(`casse une paire (${signed(p.break_pair)})`);
+    if ("column_chance" in p) out.push(`chance de compléter la paire de ${p.column_value} (${signed(p.column_chance)})`);
+    if ("spread" in p) out.push(`colonne encore peu connue : on garde une inconnue par colonne (${signed(p.spread)})`);
+    if ("tempo" in p) out.push(`bonus pour avancer en retournant (${signed(p.tempo)})`);
+    if ("deny" in p) out.push(`carte utile au joueur suivant (${signed(p.deny)})`);
+    if ("finish" in p) out.push(finishText(p.finish_detail, p.finish));
+    return out;
+  }
+  function ctxText(c) {
+    return `Une carte cachée vaut ~${num(c.hidden_value, 2)}${Math.abs(c.hidden_place - c.hidden_value) > 1e-9 ? ` (comptée ${num(c.hidden_place)} quand on envisage de la remplacer)` : ""}. ` +
+      `Votre score final estimé : ${num(c.my_est)} ; meilleur adversaire : ${num(c.opp_best)}.`;
+  }
+  function optionLabel(o, card) {
+    if (o.kind === "reveal") return `Défausser le ${card}, retourner ${cell(o.pos)}`;
+    return `Poser sur ${o.current === null ? "une cachée" : "le " + o.current} (${cell(o.pos)})`;
+  }
+  function groupOptions(opts, card, chosen) {
+    const ck = chosen ? `${chosen.kind}|${chosen.hidden ? "h" : chosen.current}|${chosen.total.toFixed(2)}` : null;
+    const groups = new Map();
+    for (const o of opts) {
+      const k = `${o.kind}|${o.current === null ? "h" : o.current}|${o.value.toFixed(2)}`;
+      if (!groups.has(k)) groups.set(k, { o, n: 0 });
+      groups.get(k).n++;
+    }
+    const out = [...groups.entries()].map(([k, { o, n }]) => ({
+      label: n === 1 ? optionLabel(o, card) : o.kind === "reveal" ? `Défausser le ${card}, retourner une carte cachée` : o.current === null ? "Poser sur une carte cachée" : `Poser sur un ${o.current}`,
+      value: o.value, count: n, chosen: k === ck,
+    }));
+    const top = out.slice(0, 5);
+    if (ck && !top.some((o) => o.chosen)) top.push(...out.filter((o) => o.chosen));
+    return top;
+  }
+  function optionsHTML(opts) {
+    if (!opts.length) return "";
+    const lo = Math.min(0, ...opts.map((o) => o.value)), hi = Math.max(0, ...opts.map((o) => o.value));
+    const span = hi - lo || 1, zero = ((0 - lo) / span) * 100;
+    return `<div class="opts">` + opts.map((o) => {
+      const a = ((Math.min(o.value, 0) - lo) / span) * 100, b = ((Math.max(o.value, 0) - lo) / span) * 100;
+      return `<div class="optrow ${o.chosen ? "chosen" : ""}"><span class="lab">${o.chosen ? "▸ " : ""}${esc(o.label)}${o.count > 1 ? ` ×${o.count}` : ""}</span>
+        <span class="track"><span class="zero" style="left:${zero}%"></span><span class="fill" style="left:${a}%;width:${Math.max(b - a, 1)}%"></span></span>
+        <span class="val">${num(o.value)}</span></div>`;
+    }).join("") + `</div>`;
+  }
+  const li = (lines) => lines.map((l) => l.startsWith("• ") ? `<li class="sub">${esc(l.slice(2))}</li>` : `<li>${esc(l)}</li>`).join("");
+
+  // ------------------------------------------------------------------ rendu : réglages
+  function renderSetup() {
+    const n = S.nOpp;
+    const names = Array.from({ length: n }, (_, i) => S.names[i + 1] || `Adversaire ${i + 1}`);
+    $app.innerHTML = `<header class="top"><div><h1>Assistant Skyjo</h1><p class="sub">Vous jouez, l'Expert vous conseille à chaque tour.</p></div></header>
+      <section class="panel setup">
+        <div class="field"><label>Nombre d'adversaires</label>
+          <div class="stepper"><button class="btn" id="minus" type="button" aria-label="Un adversaire de moins">−</button><output id="n">${n}</output><button class="btn" id="plus" type="button" aria-label="Un adversaire de plus">+</button></div></div>
+        <div class="field"><label>Noms, dans l'ordre où ils jouent après vous</label>
+          <div class="names">${names.map((nm, i) => `<input id="name-${i}" value="${esc(nm)}" aria-label="Adversaire ${i + 1}">`).join("")}</div></div>
+        <div class="field"><label for="profile">Conseiller</label>
+          <select id="profile">${Object.keys(PROFILES).filter((k) => LABELS[k]).map((k) => `<option value="${k}" ${k === S.profile ? "selected" : ""}>${LABELS[k]}${k === "expert" ? " (meilleur mesuré)" : ""}</option>`).join("")}</select></div>
+        <p class="hint">Au fil de la partie, touchez une carte pour saisir sa valeur. Les colonnes de trois cartes identiques sont retirées automatiquement. Tout reste enregistré sur cet appareil.</p>
+        <button class="btn primary big" id="start" type="button">Commencer la partie</button>
+      </section>`;
+    const readNames = () => { for (let i = 0; i < S.nOpp; i++) { const el = document.getElementById("name-" + i); if (el) S.names[i + 1] = el.value.trim() || `Adversaire ${i + 1}`; } };
+    document.getElementById("minus").onclick = () => { readNames(); S.nOpp = Math.max(1, S.nOpp - 1); save(); render(); };
+    document.getElementById("plus").onclick = () => { readNames(); S.nOpp = Math.min(7, S.nOpp + 1); save(); render(); };
+    document.getElementById("profile").onchange = (e) => { S.profile = e.target.value; save(); };
+    document.getElementById("start").onclick = () => {
+      readNames();
+      S.names = ["Moi", ...S.names.slice(1, S.nOpp + 1)];
+      Object.assign(S, { phase: "play", round: 1, totals: Array(S.nOpp + 1).fill(0) });
+      newRound(); save(); render();
+    };
+  }
+
+  function newRound() {
+    Object.assign(S, { boards: Array.from({ length: S.nOpp + 1 }, blankGrid), discard: null, drawn: null, finisher: null, started: false, mode: null });
+  }
+
+  // ------------------------------------------------------------------ rendu : partie
+  function cardBtn(v, { size = "", data = "", tag = "" } = {}) {
+    const cls = v === null ? "back" : band(v);
+    return `<button type="button" class="card ${size} ${cls} ${tag ? "target" : ""}" ${tag ? `data-tag="${tag}"` : ""} ${data} aria-label="${v === null ? "carte cachée" : v}">${v === null ? "" : v}</button>`;
+  }
+  function gridHTML(g, player, size, targets = {}) {
+    return g.map((col, c) => `<div class="gcol">${col === null
+      ? [0, 1, 2].map(() => `<div class="card ${size} empty" aria-label="colonne retirée"></div>`).join("")
+      : col.map((v, r) => cardBtn(v, { size, data: `data-p="${player}" data-c="${c}" data-r="${r}"`, tag: targets[c + "," + r] || "" })).join("")}</div>`).join("");
+  }
+
+  function adviceHTML(a) {
+    if (S.mode) {
+      const m = S.mode;
+      return `<p class="headline">${m.type === "place" ? `Touchez la case de votre grille où vous avez posé le ${m.card}` : "Touchez la carte cachée que vous avez retournée"}</p>
+        <p class="sub">${m.type === "place" ? "Si c'était une carte cachée, indiquez ensuite sa valeur : elle part sur la défausse." : `Le ${m.card} part sur la défausse.`}</p>
+        <div class="actions"><button class="btn" id="cancel-mode" type="button">Annuler</button></div>`;
+    }
+    if (a.kind === "initial") {
+      const left = Math.max(0, 2 - a.vis);
+      return `<p class="headline">${left ? `Retournez ${left === 2 ? "deux cartes" : "une carte"} de votre grille` : "Saisissez les cartes retournées par les autres"}</p>
+        <ul class="why">${li([
+          "Choisissez deux colonnes différentes : mesuré sur 3 000 parties, cela ne change rien au résultat (44,8 % contre 44,2 % en prenant la même colonne), mais vous gardez plus d'options pour les paires.",
+          "Touchez chaque carte retournée pour saisir sa valeur, chez vous et chez les adversaires, puis la première carte de la défausse.",
+          "Le joueur dont les deux cartes font le plus gros total commence (à la première manche).",
+        ])}</ul>
+        <div class="actions"><button class="btn primary" id="go" type="button" ${a.vis >= 2 && S.discard !== null ? "" : "disabled"}>Les cartes de départ sont saisies</button></div>`;
+    }
+    if (a.kind === "done") return `<p class="headline">Votre grille est entièrement retournée</p><p class="sub">Saisissez les derniers coups des adversaires, puis « Fin de manche ».</p>`;
+    if (a.kind === "need-discard") return `<p class="headline">Saisissez la carte de la défausse</p><p class="sub">Touchez la défausse ci-dessous.</p>`;
+    if (a.kind === "error") return `<p class="headline">Saisie incohérente</p><p class="sub">${esc(a.msg)}. Vérifiez les cartes saisies (il n'existe que 5 cartes −2, 15 cartes 0 et 10 de chaque autre valeur).</p>`;
+
+    const last = S.finisher !== null && S.finisher !== 0;
+    const lastNote = last ? `<div class="banner warn">${esc(name(S.finisher))} a tout retourné : c'est votre dernier coup, seul le score compte.</div>` : "";
+    if (a.kind === "start") {
+      const e = a.exp, card = e.card;
+      if (e.take) {
+        const ch = a.place.chosen;
+        const lines = [`Défausse : ${card}. Meilleur usage : ${targetText(e.best)}, valeur ${num(e.best.total)}.`,
+          ...breakdown(e.best, card).map((t) => "• " + t),
+          e.draw_ev !== null ? `Valeur moyenne d'une pioche : ${num(e.draw_ev)} : la défausse est meilleure.` : `Seuil pour prendre la défausse : ${num(e.params.discard_min_gain)}. Il est atteint.`,
+          ctxText(e.ctx)];
+        return `${lastNote}<p class="headline">Prenez le ${card} et posez-le sur ${ch.hidden ? "la carte cachée" : "le " + ch.current} (${cell(ch.pos)})</p>
+          <div class="actions"><button class="btn primary" id="apply-take" type="button">J'ai joué ce coup</button><button class="btn" id="draw" type="button">J'ai plutôt pioché…</button></div>
+          <details class="more" open><summary>Pourquoi</summary><ul class="why">${li(lines)}</ul>${optionsHTML(groupOptions(a.place.options, card, ch))}</details>`;
+      }
+      const lines = e.blocked ? [`Défausse : ${card}. Ce profil ne pose jamais plus de ${e.params.hidden_max} sur une carte cachée.`]
+        : [`Défausse : ${card}. Meilleur usage : ${targetText(e.best)}, valeur ${num(e.best.total)}.`, ...breakdown(e.best, card).map((t) => "• " + t),
+           e.draw_ev !== null ? `Valeur moyenne d'une pioche : ${num(e.draw_ev)} : piocher est meilleur.` : `Il faut au moins ${num(e.params.discard_min_gain)} pour prendre la défausse : ce n'est pas le cas.`];
+      lines.push("La pioche garde deux options : poser la carte, ou la jeter et retourner une carte cachée.", ctxText(e.ctx));
+      return `${lastNote}<p class="headline">Piochez une carte</p><p class="sub">Laissez le ${card} sur la défausse.</p>
+        <div class="actions"><button class="btn primary" id="draw" type="button">J'ai pioché…</button><button class="btn" id="take-anyway" type="button">J'ai pris la défausse</button></div>
+        <details class="more"><summary>Pourquoi</summary><ul class="why">${li(lines)}</ul>${optionsHTML(groupOptions(e.options, card, e.best))}</details>`;
+    }
+    // carte piochée
+    const e = a.exp, card = e.card, pl = e.place, rv = e.reveal;
+    const chosen = e.replace ? pl : rv;
+    const head = e.replace
+      ? `Posez le ${card} sur ${pl.hidden ? "la carte cachée" : "le " + pl.current} (${cell(pl.pos)})`
+      : `Défaussez le ${card} et retournez la carte ${cell(rv.pos)}`;
+    const lines = [];
+    if (pl && !e.forced) lines.push(`Meilleur placement : ${targetText(pl)}, valeur ${num(pl.total)}.`, ...breakdown(pl, card).map((t) => "• " + t));
+    else if (e.params.hidden_max !== null && card > e.params.hidden_max) lines.push(`Ce profil ne pose jamais plus de ${e.params.hidden_max} sur une carte cachée.`);
+    if (rv) lines.push(`Défausser et retourner ${cell(rv.pos)} : valeur ${num(rv.total)}.`, ...breakdown(rv, card).map((t) => "• " + t));
+    if (e.forced) lines.push("Plus de carte cachée à retourner : il faut poser la carte.");
+    else if (pl && rv) lines.push(`Conclusion : ${e.replace ? "poser" : "défausser et retourner"} (${num(Math.max(pl.total, rv.total))} contre ${num(Math.min(pl.total, rv.total))}).`);
+    const opts = groupOptions(e.options, card, chosen);
+    if (opts.some((o) => o.chosen && o.count > 1)) lines.push("Plusieurs cases se valent : n'importe laquelle de ces cases convient.");
+    lines.push(ctxText(e.ctx));
+    return `${lastNote}<p class="headline">${head}</p>
+      <div class="actions"><button class="btn primary" id="apply-drawn" type="button">J'ai joué ce coup</button><button class="btn" id="cancel-drawn" type="button">Corriger la carte piochée</button></div>
+      <div class="actions"><button class="btn ghost" id="place-elsewhere" type="button">Je l'ai posée ailleurs</button><button class="btn ghost" id="reveal-elsewhere" type="button">Je l'ai jetée et j'ai retourné ailleurs</button></div>
+      <details class="more" open><summary>Pourquoi</summary><ul class="why">${li(lines)}</ul>${optionsHTML(opts)}</details>`;
+  }
+
+  function renderPlay() {
+    const a = computeAdvice();
+    const targets = {};
+    if (a.kind === "start" && a.exp.take) targets[a.place.chosen.pos.join(",")] = "ici";
+    if (a.kind === "drawn") { const ch = a.exp.replace ? a.exp.place : a.exp.reveal; if (ch) targets[ch.pos.join(",")] = a.exp.replace ? "poser" : "retourner"; }
+    const me = S.boards[0];
+    const est = (g) => visibleScore(g) + hiddenCount(g) * E.NAIVE_EXPECTED;
+    $app.innerHTML = `
+      <header class="top">
+        <div><h1>Assistant Skyjo</h1><p class="sub">Manche ${S.round} · conseiller : ${esc(LABELS[S.profile] || S.profile)}</p></div>
+        <div class="tools">
+          <button class="btn" id="undo" type="button" ${undo.length ? "" : "disabled"}>Annuler</button>
+          <button class="btn" id="end-round" type="button">Fin de manche</button>
+          <button class="btn ghost" id="new-game" type="button">Nouvelle partie</button>
+        </div>
+        <div class="totals" style="flex-basis:100%">${S.names.map((n, i) => `<span>${esc(n)} <b>${S.totals[i]}</b></span>`).join("")}</div>
+      </header>
+      <div class="layout">
+        <div class="col">
+          <section class="panel">
+            <div class="piles">
+              <div class="pile"><span class="cap">Défausse</span>${S.discard === null ? `<button class="card empty" id="discard" type="button" aria-label="saisir la défausse" style="cursor:pointer"></button>` : cardBtn(S.discard, { data: 'id="discard"' })}</div>
+              <div class="pile"><span class="cap">Piochée</span>${S.drawn === null ? `<button class="card empty" id="drawn-slot" type="button" aria-label="saisir la carte piochée" style="cursor:pointer"></button>` : cardBtn(S.drawn, { data: 'id="drawn-slot"' })}</div>
+              <p class="hint">Touchez la défausse quand elle change (coup d'un adversaire). La carte piochée ne concerne que vous.</p>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>Ma grille · visible ${visibleScore(me)} · estimé ${num(est(me))}</h2>
+            <div class="grid me">${gridHTML(me, 0, "", targets)}</div>
+          </section>
+          <section class="panel advice" aria-live="polite"><h2>Conseil</h2>${adviceHTML(a)}</section>
+        </div>
+        <div class="col">
+          <section class="panel">
+            <h2>Adversaires, dans l'ordre de jeu</h2>
+            ${S.finisher !== null ? `<div class="banner warn">${esc(name(S.finisher))} a tout retourné : dernier tour pour ${S.finisher === 0 ? "les autres" : "tous les autres"}.</div>` : ""}
+            <div class="opps">${S.boards.slice(1).map((g, k) => `<article class="opp">
+              <header><h3>${esc(name(k + 1))}</h3>${S.finisher === k + 1 ? '<span class="chip on">a fini</span>' : ""}</header>
+              <div class="stats"><span>visible <b>${visibleScore(g)}</b></span><span>cachées <b>${hiddenCount(g)}</b></span><span>estimé <b>${num(est(g))}</b></span></div>
+              <div class="grid opp">${gridHTML(g, k + 1, "sm")}</div></article>`).join("")}</div>
+            <p class="hint">Quand un adversaire remplace une carte visible, l'ancienne passe automatiquement sur la défausse. S'il retourne ou remplace une carte cachée, mettez aussi la défausse à jour.</p>
+          </section>
+        </div>
+      </div>`;
+    bindPlay(a);
+  }
+
+  function bindPlay(a) {
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+    on("undo", () => { if (undo.length) { S = JSON.parse(undo.pop()); save(); render(); } });
+    on("new-game", () => confirmSheet("Abandonner cette partie et en commencer une nouvelle ?", "Nouvelle partie", () => { S = { phase: "setup", nOpp: S.nOpp, names: S.names, profile: S.profile }; undo = []; save(); render(); }));
+    on("end-round", () => { S.phase = "score"; save(); render(); });
+    on("discard", async () => {
+      const v = await pick({ title: "Carte du dessus de la défausse", allowNone: true });
+      if (v === null) return;
+      commit((s) => { s.discard = v === "none" ? null : v; });
+    });
+    on("drawn-slot", () => drawFlow());
+    on("draw", () => drawFlow());
+    on("cancel-drawn", () => drawFlow());
+    on("go", () => commit((s) => { s.started = true; }, "C'est parti : demandez conseil à chacun de vos tours."));
+    on("take-anyway", () => commit((s) => { s.mode = { type: "place", card: s.discard, from: "discard" }; }));
+    on("place-elsewhere", () => commit((s) => { s.mode = { type: "place", card: s.drawn, from: "drawn" }; }));
+    on("reveal-elsewhere", () => commit((s) => { s.mode = { type: "reveal", card: s.drawn }; }));
+    on("cancel-mode", () => commit((s) => { s.mode = null; }));
+    on("apply-take", async () => {
+      const ch = a.place.chosen, [c, r] = ch.pos, card = S.discard;
+      let under = ch.current;
+      if (ch.hidden) { under = await pick({ title: "Quelle carte était cachée ?", sub: `Elle part sur la défausse ; le ${card} prend sa place.` }); if (typeof under !== "number") return; }
+      commit((s) => { s.boards[0][c][r] = card; s.discard = under; });
+    });
+    on("apply-drawn", async () => {
+      const e = a.exp, card = e.card;
+      if (e.replace) {
+        const ch = e.place, [c, r] = ch.pos;
+        let under = ch.current;
+        if (ch.hidden) { under = await pick({ title: "Quelle carte était cachée ?", sub: `Elle part sur la défausse ; le ${card} prend sa place.` }); if (typeof under !== "number") return; }
+        commit((s) => { s.boards[0][c][r] = card; s.discard = under; s.drawn = null; });
+      } else {
+        const [c, r] = e.reveal.pos;
+        const v = await pick({ title: "Quelle carte avez-vous retournée ?", sub: `Le ${card} part sur la défausse.` });
+        if (typeof v !== "number") return;
+        commit((s) => { s.boards[0][c][r] = v; s.discard = card; s.drawn = null; });
+      }
+    });
+    document.querySelectorAll("[data-p]").forEach((b) => { b.onclick = () => editCell(Number(b.dataset.p), Number(b.dataset.c), Number(b.dataset.r)); });
+  }
+
+  async function drawFlow() {
+    const v = await pick({ title: "Quelle carte avez-vous piochée ?", allowNone: S.drawn !== null });
+    if (v === null) return;
+    commit((s) => { s.drawn = v === "none" ? null : v; s.mode = null; });
+  }
+
+  async function editCell(p, c, r) {
+    const g = S.boards[p], old = g[c][r];
+    if (S.mode && p === 0) {
+      const m = S.mode;
+      if (m.type === "place") {
+        let under = old;
+        if (old === null) { under = await pick({ title: "Quelle carte était cachée ?", sub: `Elle part sur la défausse ; le ${m.card} prend sa place.` }); if (typeof under !== "number") return; }
+        commit((s) => { s.boards[0][c][r] = m.card; s.discard = under; if (m.from === "drawn") s.drawn = null; s.mode = null; });
+      } else {
+        if (old !== null) { toast("Choisissez une carte cachée."); return; }
+        const v = await pick({ title: "Quelle carte avez-vous retournée ?", sub: `Le ${m.card} part sur la défausse.` });
+        if (typeof v !== "number") return;
+        commit((s) => { s.boards[0][c][r] = v; s.discard = m.card; s.drawn = null; s.mode = null; });
+      }
+      return;
+    }
+    const who = p === 0 ? "votre grille" : name(p);
+    const v = await pick({ title: `${who} · ${cell([c, r])}`, sub: old === null ? "Carte retournée ou posée à cet endroit." : `Actuellement : ${old}. Une nouvelle valeur envoie le ${old} sur la défausse.`, allowHidden: true, allowRemove: true });
+    if (v === null) return;
+    commit((s) => {
+      const grid = s.boards[p];
+      if (v === "remove") { grid[c] = null; return; }
+      if (v === "hidden") { grid[c][r] = null; return; }
+      if (old !== null && old !== v && S.started) s.discard = old; // échange d'une carte visible : l'ancienne part à la défausse
+      grid[c][r] = v;
+    });
+  }
+
+  function confirmSheet(text, label, fn) {
+    const root = document.getElementById("sheet-root");
+    root.innerHTML = `<div class="sheet-bg"><div class="sheet" role="dialog" aria-modal="true"><h3>${esc(text)}</h3><div class="extra"><button class="btn primary" id="yes" type="button">${esc(label)}</button><button class="btn" id="no" type="button">Annuler</button></div></div></div>`;
+    document.getElementById("yes").onclick = () => { root.innerHTML = ""; fn(); };
+    document.getElementById("no").onclick = () => { root.innerHTML = ""; };
+  }
+
+  // ------------------------------------------------------------------ rendu : fin de manche
+  function finalScore(g) {
+    let s = 0;
+    for (const col of g) {
+      if (!col) continue;
+      if (col.every((v) => v !== null) && col[0] === col[1] && col[1] === col[2]) continue; // colonne retirée au retournement final
+      for (const v of col) s += v ?? 0;
+    }
+    return s;
+  }
+  function renderScore() {
+    const missing = S.boards.map((g, i) => [i, hiddenCount(g)]).filter(([, h]) => h > 0);
+    const raw = S.boards.map(finalScore);
+    const f = S.finisher;
+    const scores = raw.map((x, i) => {
+      if (i !== f) return x;
+      const others = Math.min(...raw.filter((_, j) => j !== f));
+      return x > 0 && x >= others ? 2 * x : x;
+    });
+    $app.innerHTML = `<header class="top"><div><h1>Fin de la manche ${S.round}</h1><p class="sub">Retournez toutes les cartes, puis validez.</p></div>
+        <div class="tools"><button class="btn" id="back" type="button">Revenir à la manche</button></div></header>
+      <section class="panel" style="max-width:640px">
+        ${missing.length ? `<div class="banner warn">Cartes encore cachées : ${missing.map(([i, h]) => `${esc(name(i))} (${h})`).join(", ")}. Revenez à la manche et touchez-les pour saisir leur valeur.</div>` : ""}
+        <div class="field"><label for="finisher">Qui a terminé la manche (tout retourné en premier) ?</label>
+          <select id="finisher"><option value="">Personne</option>${S.names.map((n, i) => `<option value="${i}" ${i === f ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div>
+        <table class="score"><thead><tr><th>Joueur</th><th>Manche</th><th>Total</th></tr></thead><tbody>
+          ${S.names.map((n, i) => `<tr><td>${esc(n)}${i === f && scores[i] !== raw[i] ? " · doublé" : ""}</td><td class="n">${scores[i]}${scores[i] !== raw[i] ? ` (${raw[i]}×2)` : ""}</td><td class="n">${S.totals[i] + scores[i]}</td></tr>`).join("")}
+        </tbody></table>
+        <p class="hint">Le joueur qui a terminé voit son score doublé s'il n'a pas strictement le plus petit score (et seulement si ce score est positif).</p>
+        <button class="btn primary big" id="validate" type="button" ${missing.length ? "disabled" : ""}>Valider la manche</button>
+      </section>`;
+    document.getElementById("back").onclick = () => { S.phase = "play"; save(); render(); };
+    document.getElementById("finisher").onchange = (e) => { S.finisher = e.target.value === "" ? null : Number(e.target.value); save(); render(); };
+    document.getElementById("validate").onclick = () => {
+      undo.push(JSON.stringify(S));
+      S.totals = S.totals.map((t, i) => t + scores[i]);
+      if (Math.max(...S.totals) >= 100) { S.phase = "over"; }
+      else { S.round += 1; S.phase = "play"; newRound(); }
+      save(); render();
+    };
+  }
+
+  function renderOver() {
+    const best = Math.min(...S.totals);
+    const order = S.totals.map((t, i) => [i, t]).sort((a, b) => a[1] - b[1]);
+    $app.innerHTML = `<header class="top"><div><h1>Partie terminée</h1><p class="sub">${esc(order.filter(([, t]) => t === best).map(([i]) => name(i)).join(" et "))} gagne avec ${best} points.</p></div></header>
+      <section class="panel" style="max-width:520px"><table class="score"><tbody>${order.map(([i, t]) => `<tr><td>${esc(name(i))}</td><td class="n">${t}</td></tr>`).join("")}</tbody></table>
+      <button class="btn primary big" id="again" type="button">Nouvelle partie</button></section>`;
+    document.getElementById("again").onclick = () => { S = { phase: "setup", nOpp: S.nOpp, names: S.names, profile: S.profile }; undo = []; save(); render(); };
+  }
+
+  function render() {
+    if (S.phase === "setup") renderSetup();
+    else if (S.phase === "score") renderScore();
+    else if (S.phase === "over") renderOver();
+    else renderPlay();
+  }
+
+  window.claude?.hot?.snapshot?.(() => ({ S }));
+  const boot = (saved) => { if (saved && saved.S && saved.S.phase) S = saved.S; render(); };
+  window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+})();
+</script>

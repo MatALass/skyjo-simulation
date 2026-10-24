@@ -87,6 +87,8 @@ def breakdown(parts: dict[str, Any], card: int) -> list[str]:
         out.append(f"casse une paire ({signed(parts['break_pair'])})")
     if "column_chance" in parts:
         out.append(f"chance de compléter la paire de {parts['column_value']} ({signed(parts['column_chance'])})")
+    if "spread" in parts:
+        out.append(f"colonne encore peu connue, on garde une inconnue par colonne ({signed(parts['spread'])})")
     if "tempo" in parts:
         out.append(f"bonus pour avancer en retournant une carte ({signed(parts['tempo'])})")
     if "deny" in parts:

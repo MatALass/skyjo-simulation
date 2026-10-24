@@ -65,9 +65,9 @@ PROFILES: dict[str, Profile] = {
         ),
         Profile(
             name="expert",
-            description="L'Expert (issu de skyjo optimize, 2 x 3 passes) : carte cachée estimée à ~4, défausse "
-            "seulement si elle rapporte >= 5, vise fortement les paires, retourne volontiers, ne finit "
-            "qu'avec 10 points d'avance estimée. Ne compte pas les cartes.",
+            description="L'Expert (issu de skyjo optimize, puis complété) : carte cachée estimée à ~4, défausse "
+            "seulement si elle rapporte >= 5, vise fortement les paires, retourne volontiers en gardant une "
+            "inconnue par colonne, ne finit qu'avec 10 points d'avance estimée. Ne compte pas les cartes.",
             hidden_max=None,
             hidden_discount=1.0,      # carte cachée ~ 5.07 - 1 : on pose jusqu'à ~4 dessus
             discard_min_gain=5.0,
@@ -75,6 +75,9 @@ PROFILES: dict[str, Profile] = {
             reveal_bonus=1.0,
             finish_policy="if_lowest",
             finish_margin=10.0,
+            # v0.5 : 45,2 % -> 53,1 % de victoires à 4 joueurs (2 400 parties, graine neuve) ; contrôle
+            # reveal_bonus=3 sans répartition : 46,2 % -> le gain vient bien de la répartition.
+            reveal_spread=4.0,
         ),
         Profile(
             name="greedy",

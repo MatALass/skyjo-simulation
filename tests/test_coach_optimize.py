@@ -124,7 +124,46 @@ def test_fields_for_players():
 def test_expert_matches_optimized_spec():
     from dataclasses import replace
 
-    spec = "prudent:discard_min_gain=5:finish_margin=10:hidden_discount=1:hidden_max=none:pair_bonus=4:reveal_bonus=1"
+    spec = ("prudent:discard_min_gain=5:finish_margin=10:hidden_discount=1:hidden_max=none:pair_bonus=4:"
+            "reveal_bonus=1:reveal_spread=4")
     optimized = make_strategy(spec).p
     expert = make_strategy("expert").p
     assert replace(optimized, name="", description="") == replace(expert, name="", description="")
+
+
+# ---------------------------------------------------------------------------------------------- nouveaux paramètres
+def _ctx_for(spec, me_grid, drawn=5):
+    from skyjo.coach import Situation, _deal
+    from skyjo.strategies.base import GameView
+
+    s = Situation(parse_grid(me_grid), (parse_grid(OPP),), top_discard=7, drawn=drawn)
+    boards, pile = _deal(s, random.Random(0))
+    rnd = Round.from_position([make_strategy(spec), make_strategy("greedy")], random.Random(0), boards, pile, [7])
+    view: GameView = rnd._view(0, False, 0, in_hand=drawn)
+    strat = rnd.strategies[0]
+    return strat, view, strat._ctx(view)
+
+
+def test_pair_scale_values_high_pairs_more():
+    grid = "9 1 ? ? / ? ? ? ? / ? ? ? ?"
+    strat, view, ctx = _ctx_for("expert:pair_bonus=0:pair_scale=1", grid)
+    high = strat._place_value(view, ctx, (0, 1), 9, enforce_limit=False, parts=(p9 := {}))
+    low = strat._place_value(view, ctx, (1, 1), 1, enforce_limit=False, parts=(p1 := {}))
+    assert p9["pair"] == 9 and p1["pair"] == 1
+    assert high is not None and low is not None
+
+
+def test_pair_min_blocks_pairs_of_negative_cards():
+    grid = "-2 ? ? ? / ? ? ? ? / ? ? ? ?"
+    strat, view, ctx = _ctx_for("expert:pair_min=1", grid)
+    parts = {}
+    strat._place_value(view, ctx, (0, 1), -2, enforce_limit=False, parts=parts)
+    assert "pair" not in parts
+
+
+def test_reveal_spread_prefers_columns_with_more_hidden_cards():
+    grid = "5 ? ? ? / 6 ? ? ? / ? ? ? ?"  # colonne 1 : 1 cachée ; colonne 2 : 3 cachées
+    strat, view, ctx = _ctx_for("expert:reveal_spread=2", grid)
+    last_hidden = strat._reveal_value(view, ctx, (0, 2), 12)
+    fresh = strat._reveal_value(view, ctx, (1, 0), 12)
+    assert fresh - last_hidden == pytest.approx(2.0)

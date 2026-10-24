@@ -188,6 +188,13 @@ def cmd_replay(args: argparse.Namespace) -> None:
     print(f"→ {out}  (ouvrez ce fichier dans votre navigateur)")
 
 
+def cmd_assistant(args: argparse.Namespace) -> None:
+    from skyjo.assist import write_assistant
+
+    out = write_assistant(args.out)
+    print(f"→ {out}  (ouvrez ce fichier dans un navigateur ; il fonctionne aussi hors ligne)")
+
+
 def cmd_analyze(args: argparse.Namespace) -> None:
     from skyjo.analysis import analyze
 
@@ -271,6 +278,10 @@ def main() -> None:
     p.add_argument("--no-columns-on-reveal", action="store_true")
     p.add_argument("--no-columns-at-final-reveal", action="store_true")
     p.set_defaults(func=cmd_replay)
+
+    p = sub.add_parser("assistant", help="Générer la page de l'assistant en direct (conseils en vraie partie).")
+    p.add_argument("--out", type=Path, default=Path("results/assistant.html"))
+    p.set_defaults(func=cmd_assistant)
 
     p = sub.add_parser("analyze", help="Analyser un journal de décisions.")
     p.add_argument("decisions", type=Path)

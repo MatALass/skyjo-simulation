@@ -63,8 +63,12 @@ si le gain disparaît, c'était du bruit.
 | `collectionneur` | Vise les colonnes, valorise les paires |
 | `opportuniste` | Accélère s'il mène, ralentit s'il est derrière, évite de servir le joueur suivant |
 | `stratege` | Référence : comptage des cartes, espérance exacte de la pioche, fin de manche probabiliste (sans lecture du rythme depuis la v0.3) |
-| `expert` | Résultat de `skyjo optimize` : carte cachée estimée à ~4, défausse seulement si gain ≥ 5, paires très valorisées, finit seulement avec 10 pts d'avance estimée. Ne compte pas les cartes |
+| `expert` | Résultat de `skyjo optimize` : carte cachée estimée à ~4, défausse seulement si gain ≥ 5, paires très valorisées, garde une inconnue par colonne (v0.5), finit seulement avec 10 pts d'avance estimée. Ne compte pas les cartes |
 | `greedy`, `random` | Références basses |
+
+Paramètres ajoutés en v0.5 (neutres par défaut) : `pair_scale` (une paire vaut d'autant plus que la carte est
+haute), `pair_min` (pas de bonus de paire sous cette valeur), `reveal_spread` (préférer révéler les colonnes encore
+cachées, pour garder une inconnue par colonne).
 
 Chaque personnalité est un `Profile` (`strategies/personalities.py`). Tout paramètre se surcharge en ligne :
 `stratege:finish_bonus=0:deny_weight=1`.

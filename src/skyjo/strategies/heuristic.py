@@ -38,6 +38,9 @@ class Profile:
     hidden_discount: float = 0.0     # valeur d'option d'une carte cachée (retirée de son espérance)
     discard_min_gain: float = 3.0    # gain mini pour prendre la défausse (si pas de lookahead)
     pair_bonus: float = 0.0          # valeur d'une paire visible dans une colonne (espoir de colonne)
+    pair_scale: float = 0.0          # + valeur par point de la carte : une paire de 10 vaut plus qu'une paire de 1
+    pair_min: int = -2               # pas de bonus de paire en dessous de cette valeur (paire de -2 = colonne à éviter)
+    reveal_spread: float = 0.0       # préfère révéler les colonnes encore très cachées (garder 1 inconnue par colonne)
     # --- rythme ---
     reveal_bonus: float = 0.0        # valeur accordée au fait de retourner une carte (avancer vers la fin)
     tempo_weight: float = 0.0        # accélère si on mène, ralentit si on est derrière (lecture adverse)
@@ -157,6 +160,14 @@ class HeuristicStrategy(Strategy):
             d["p_lowest"] = self._p_strictly_lowest(view, ctx, my_final)
         return d
 
+    def _pair_value(self, card: int) -> float:
+        return self.p.pair_bonus + self.p.pair_scale * max(card, 0)
+
+    def _spread(self, others: list[int | None]) -> float:
+        """Bonus pour toucher une colonne encore très cachée ; 0 pour la dernière carte cachée d'une colonne."""
+        hidden_in_col = 1 + sum(v is None for v in others)
+        return self.p.reveal_spread * (hidden_in_col - 1) / 2
+
     def _deny_cost(self, view: GameView, ctx: _Ctx, card: int) -> float:
         """Coût de laisser `card` sur la défausse pour le joueur suivant."""
         if not self.p.deny_weight:
@@ -194,19 +205,26 @@ class HeuristicStrategy(Strategy):
         value = delta
         if parts is not None:
             parts.update(current=current, hidden=hidden, cur_value=cur, completes=completes, gain=delta)
-        if self.p.pair_bonus and not completes:
-            if card in others:
-                value += self.p.pair_bonus
+        if (self.p.pair_bonus or self.p.pair_scale) and not completes:
+            if card in others and card >= self.p.pair_min:
+                pv = self._pair_value(card)
+                value += pv
                 if parts is not None:
-                    parts["pair"] = self.p.pair_bonus
-            if not hidden and current in others:
-                value -= self.p.pair_bonus  # on casse une paire existante
+                    parts["pair"] = pv
+            if not hidden and current in others and current >= self.p.pair_min:
+                pv = self._pair_value(current)
+                value -= pv  # on casse une paire existante
                 if parts is not None:
-                    parts["break_pair"] = -self.p.pair_bonus
+                    parts["break_pair"] = -pv
         if hidden:
             value += ctx.tempo
             if parts is not None and ctx.tempo:
                 parts["tempo"] = ctx.tempo
+            if self.p.reveal_spread:
+                sp = self._spread(others)
+                value += sp
+                if parts is not None and sp:
+                    parts["spread"] = sp
             if len(ctx.hidden) == 1 and not view.is_last_turn:
                 fv = self._finish_value(view, ctx, ctx.my_est - delta)
                 value += fv
@@ -233,6 +251,11 @@ class HeuristicStrategy(Strategy):
             if dc:
                 parts["deny"] = -dc
         others = ctx.others[pos]
+        if self.p.reveal_spread:
+            sp = self._spread(others)
+            value += sp
+            if parts is not None and sp:
+                parts["spread"] = sp
         if others[0] is not None and others[0] == others[1]:
             x = others[0]
             chance = ctx.belief.prob(x) * 3 * x  # chance de compléter la colonne
