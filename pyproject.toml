@@ -4,14 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skyjo-sim"
-version = "0.5.0"
+version = "0.6.0"
 description = "Simulateur Monte Carlo de Skyjo pour comparer des stratégies selon le nombre de joueurs"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
 analysis = ["pandas>=2"]
-dev = ["pytest>=8", "ruff>=0.5", "pandas>=2"]
+ml = ["pandas>=2", "pyarrow>=14", "scikit-learn>=1.4", "joblib>=1.3", "threadpoolctl>=3"]
+dev = ["pytest>=8", "ruff>=0.5", "pandas>=2", "pyarrow>=14", "scikit-learn>=1.4", "joblib>=1.3",
+       "threadpoolctl>=3"]
 
 [project.scripts]
 skyjo = "skyjo.__main__:main"

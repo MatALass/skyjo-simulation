@@ -15,7 +15,6 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from skyjo import __version__
 from skyjo.board import Pos
 from skyjo.game import Round, play_game
 from skyjo.rules import DEFAULT_RULES, Rules
@@ -400,6 +399,15 @@ class Recorder:
 
 
 # ---------------------------------------------------------------------------------------------- API
+def _version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("skyjo-sim")
+    except Exception:  # paquet non installé (exécution depuis les sources)
+        return "dev"
+
+
 def _labels(strategies: Sequence[Strategy]) -> list[str]:
     base = [_profile_label(s) for s in strategies]
     out = []
@@ -418,7 +426,7 @@ def record_game(specs: Sequence[str], seed: int | None = None, rules: Rules = DE
     play_game(strategies, rng, rules, observer=rec)
     return {
         "meta": {
-            "version": __version__,
+            "version": _version(),
             "seed": seed,
             "players": [{"label": labels[i], "spec": specs[i], "description": s.description}
                         for i, s in enumerate(strategies)],

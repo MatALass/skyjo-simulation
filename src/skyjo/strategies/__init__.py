@@ -29,10 +29,17 @@ def available() -> dict[str, str]:
     """Nom -> description de toutes les stratégies disponibles."""
     out = {name: p.description for name, p in PROFILES.items()}
     out[RandomStrategy.name] = RandomStrategy.description
+    out["ml"] = ("Stratégie apprise (skyjo ml train) : minimise le score prédit. "
+                 "« ml » = models/value.joblib, « ml:chemin/vers/modele.joblib » pour un autre modèle.")
     return out
 
 
 def make_strategy(spec: str) -> Strategy:
+    spec = spec.strip()
+    if spec == "ml" or spec.startswith("ml:"):
+        from skyjo.ml.policy import DEFAULT_MODEL, MLStrategy  # import paresseux : scikit-learn est optionnel
+
+        return MLStrategy(spec[3:] or DEFAULT_MODEL)
     name, *params = [s.strip() for s in spec.split(":")]
     if name == RandomStrategy.name:
         if params:

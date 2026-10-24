@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import shutil
 import sys
 import time
@@ -158,7 +159,9 @@ def execute(
         for i in order:
             on_done(i, worker(tasks[i]))
     else:
-        ex = ProcessPoolExecutor(max_workers=jobs)
+        # « spawn » partout (défaut de Windows) : un fork d'un processus qui a déjà des threads (pandas, pyarrow,
+        # scikit-learn) peut se bloquer, et le comportement devient identique sur tous les systèmes.
+        ex = ProcessPoolExecutor(max_workers=jobs, mp_context=multiprocessing.get_context("spawn"))
         try:
             futures = {ex.submit(worker, tasks[i]): i for i in order}
             for fut in as_completed(futures):

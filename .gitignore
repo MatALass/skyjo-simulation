@@ -1,5 +1,33 @@
+# --- Python ---
 __pycache__/
+*.py[cod]
 *.egg-info/
-.pytest_cache/
+build/
+dist/
 .venv/
+venv/
+
+# --- Outils ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- Sorties de simulation (régénérables, parfois volumineuses) ---
 results/
+!results/.gitkeep
+
+# --- Apprentissage automatique (jeux de données et modèles entraînés) ---
+data/
+models/*
+!models/README.md
+*.parquet
+*.joblib
+
+# --- Systèmes et éditeurs ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

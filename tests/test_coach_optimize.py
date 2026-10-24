@@ -125,7 +125,7 @@ def test_expert_matches_optimized_spec():
     from dataclasses import replace
 
     spec = ("prudent:discard_min_gain=5:finish_margin=10:hidden_discount=1:hidden_max=none:pair_bonus=4:"
-            "reveal_bonus=1:reveal_spread=4")
+            "pair_scale=0.25:reveal_bonus=0.5:reveal_spread=4")
     optimized = make_strategy(spec).p
     expert = make_strategy("expert").p
     assert replace(optimized, name="", description="") == replace(expert, name="", description="")

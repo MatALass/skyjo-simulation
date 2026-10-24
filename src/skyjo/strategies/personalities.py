@@ -72,7 +72,8 @@ PROFILES: dict[str, Profile] = {
             hidden_discount=1.0,      # carte cachée ~ 5.07 - 1 : on pose jusqu'à ~4 dessus
             discard_min_gain=5.0,
             pair_bonus=4.0,
-            reveal_bonus=1.0,
+            pair_scale=0.25,          # v0.6 : optimize --players 4, validation 2,061 -> 2,168 (graine neuve)
+            reveal_bonus=0.5,         # v0.6 : idem ; neutre à 2 joueurs (1,631 -> 1,640)
             finish_policy="if_lowest",
             finish_margin=10.0,
             # v0.5 : 45,2 % -> 53,1 % de victoires à 4 joueurs (2 400 parties, graine neuve) ; contrôle

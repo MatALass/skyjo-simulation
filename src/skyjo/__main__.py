@@ -195,6 +195,55 @@ def cmd_assistant(args: argparse.Namespace) -> None:
     print(f"→ {out}  (ouvrez ce fichier dans un navigateur ; il fonctionne aussi hors ligne)")
 
 
+def cmd_ml_dataset(args: argparse.Namespace) -> None:
+    from skyjo.ml.dataset import generate, save
+
+    pool = tuple(s.strip() for s in args.pool.split(","))
+    pr = None if args.quiet else Progress(args.games, label="données")
+    t0 = time.perf_counter()
+    with pr or _Null():
+        df = generate(args.games, args.seed if args.seed is not None else 0, args.jobs, pool, args.eps,
+                      tuple(args.sizes), _rules(args), progress=pr)
+    path = save(df, args.out)
+    print(f"{len(df):,} coups, {df['game'].nunique():,} parties, {df['round'].groupby(df['game']).max().sum():,} "
+          f"manches ({time.perf_counter() - t0:.0f}s), dont {df['explored'].mean():.1%} de coups d'exploration")
+    print(f"→ {path}")
+
+
+def cmd_ml_train(args: argparse.Namespace) -> None:
+    from skyjo.ml.dataset import load
+    from skyjo.ml.train import train
+
+    df = load(args.data)
+    print(f"{len(df):,} coups, {df['game'].nunique():,} parties. Entraînement…", flush=True)
+    res = train(df, args.out, test_size=args.test_size, seed=args.seed or 0, max_iter=args.max_iter)
+    print(f"\nJeu de test : {res.n_test:,} coups de parties jamais vues à l'entraînement "
+          f"({res.n_train:,} en entraînement)")
+    print(f"{'modèle':<22}{'erreur absolue moy.':>22}{'R²':>8}")
+    labels = {"naive_estimate": "estimation naïve", "linear": "régression linéaire",
+              "gradient_boosting": "gradient boosting"}
+    for k, m in res.metrics.items():
+        print(f"{labels[k]:<22}{m['mae']:>22.3f}{m['r2']:>8.3f}")
+    print("\nCe que le modèle utilise (hausse de l'erreur quand on brouille la variable) :")
+    for f, mean, std in res.importances[:12]:
+        print(f"  {f:<20}{mean:>8.3f} ± {std:.3f}")
+    print(f"\n→ {args.out}\n→ {Path(args.out).with_suffix('.json')}")
+
+
+def cmd_ml_eval(args: argparse.Namespace) -> None:
+    spec = "ml" if args.model == "models/value.joblib" else f"ml:{args.model}"
+    tables = [[spec, "expert"], [spec, "expert", "prudent"], [spec, "expert", "prudent", "collectionneur"]]
+    rows = []
+    for table in tables:
+        pr = None if args.quiet else Progress(args.games, label=f"{len(table)} joueurs")
+        with pr or _Null():
+            res = run_match(table, args.games, args.seed, args.jobs, rules=_rules(args), progress=pr)
+        summ = res.summaries()
+        rows += [{"table": " vs ".join(table), **r} for r in summ]
+        print(format_table(summ, f"\n{' vs '.join(table)} — {args.games} parties"))
+    print(f"→ {write_csv(rows, args.out / 'ml_eval.csv')}")
+
+
 def cmd_analyze(args: argparse.Namespace) -> None:
     from skyjo.analysis import analyze
 
@@ -282,6 +331,27 @@ def main() -> None:
     p = sub.add_parser("assistant", help="Générer la page de l'assistant en direct (conseils en vraie partie).")
     p.add_argument("--out", type=Path, default=Path("results/assistant.html"))
     p.set_defaults(func=cmd_assistant)
+
+    ml = sub.add_parser("ml", help="Apprentissage automatique : données, entraînement, évaluation.")
+    mls = ml.add_subparsers(dest="ml_command", required=True)
+    p = mls.add_parser("dataset", help="Simuler des parties et enregistrer chaque coup (features + score final).")
+    p.add_argument("--pool", default="expert,stratege,prudent,collectionneur,opportuniste,fonceur",
+                   help="Personnalités tirées au sort pour chaque siège.")
+    p.add_argument("--eps", type=float, default=0.1, help="Probabilité de jouer un coup au hasard (exploration).")
+    p.add_argument("--sizes", type=int, nargs="+", default=[2, 3, 4], help="Tailles de table tirées au sort.")
+    _common(p)
+    p.set_defaults(func=cmd_ml_dataset, games=20000, out=Path("data/ml/dataset.parquet"))
+    p = mls.add_parser("train", help="Entraîner le modèle de valeur.")
+    p.add_argument("--data", type=Path, default=Path("data/ml/dataset.parquet"))
+    p.add_argument("--out", type=Path, default=Path("models/value.joblib"))
+    p.add_argument("--test-size", type=float, default=0.2)
+    p.add_argument("--max-iter", type=int, default=120)
+    p.add_argument("--seed", type=int, default=0)
+    p.set_defaults(func=cmd_ml_train)
+    p = mls.add_parser("eval", help="Faire jouer le modèle contre l'Expert (2, 3 et 4 joueurs).")
+    p.add_argument("--model", default="models/value.joblib")
+    _common(p)
+    p.set_defaults(func=cmd_ml_eval, games=1000)
 
     p = sub.add_parser("analyze", help="Analyser un journal de décisions.")
     p.add_argument("decisions", type=Path)
